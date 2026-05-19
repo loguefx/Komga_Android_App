@@ -3,6 +3,7 @@ package com.komga.android.widget
 import android.content.Context
 import android.content.Intent
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
@@ -23,18 +24,21 @@ import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.width
-import androidx.glance.material3.ColorProviders
-import androidx.glance.material3.GlanceTheme
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
+import androidx.glance.unit.ColorProvider
 import com.komga.android.MainActivity
-import com.komga.android.ui.theme.DarkColorScheme
-import com.komga.android.ui.theme.LightColorScheme
 
 /** Key constants shared with NewChapterWorker for widget data updates. */
 const val WIDGET_PREFS = "komga_widget_prefs"
 const val WIDGET_KEY_BOOKS = "on_deck_books"   // newline-separated list of book titles
+
+// Widget palette — navy background matching the app icon
+private val WidgetBg      = ColorProvider(Color(0xFF1A1F3C))
+private val WidgetPrimary = ColorProvider(Color(0xFF6EC6FF))
+private val WidgetText    = ColorProvider(Color.White)
+private val WidgetSubText = ColorProvider(Color.White.copy(alpha = 0.65f))
 
 class KomgaWidget : GlanceAppWidget() {
 
@@ -44,14 +48,7 @@ class KomgaWidget : GlanceAppWidget() {
         val books = raw.lines().filter { it.isNotBlank() }.take(5)
 
         provideContent {
-            GlanceTheme(
-                colors = ColorProviders(
-                    light = LightColorScheme,
-                    dark = DarkColorScheme
-                )
-            ) {
-                WidgetContent(context = context, books = books)
-            }
+            WidgetContent(context = context, books = books)
         }
     }
 }
@@ -65,11 +62,12 @@ private fun WidgetContent(context: Context, books: List<String>) {
     Box(
         modifier = GlanceModifier
             .fillMaxSize()
-            .background(GlanceTheme.colors.surface)
+            .background(WidgetBg)
             .padding(12.dp)
             .clickable(actionStartActivity(openIntent))
     ) {
         Column(modifier = GlanceModifier.fillMaxSize()) {
+            // ── Header row ────────────────────────────────────────────
             Row(
                 modifier = GlanceModifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -77,15 +75,15 @@ private fun WidgetContent(context: Context, books: List<String>) {
                 Text(
                     text = "Komga",
                     style = TextStyle(
-                        color = GlanceTheme.colors.primary,
+                        color = WidgetPrimary,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
+                        fontSize = 15.sp
                     )
                 )
                 Spacer(GlanceModifier.width(6.dp))
                 Text(
                     text = "· On Deck",
-                    style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 13.sp)
+                    style = TextStyle(color = WidgetSubText, fontSize = 13.sp)
                 )
             }
 
@@ -94,16 +92,16 @@ private fun WidgetContent(context: Context, books: List<String>) {
             if (books.isEmpty()) {
                 Text(
                     text = "Open the app to load your reading queue",
-                    style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 12.sp)
+                    style = TextStyle(color = WidgetSubText, fontSize = 12.sp)
                 )
             } else {
                 books.forEach { title ->
                     Text(
                         text = "▸  $title",
-                        style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 12.sp),
+                        style = TextStyle(color = WidgetText, fontSize = 12.sp),
                         maxLines = 1
                     )
-                    Spacer(GlanceModifier.height(4.dp))
+                    Spacer(GlanceModifier.height(3.dp))
                 }
             }
         }

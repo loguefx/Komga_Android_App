@@ -16,7 +16,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import com.komga.android.data.local.ThemeMode
 
-val DarkColorScheme = darkColorScheme(
+private val DarkColorScheme = darkColorScheme(
     primary = KomgaBlueLight,
     onPrimary = SurfaceDark,
     primaryContainer = KomgaBlueDark,
@@ -30,7 +30,7 @@ val DarkColorScheme = darkColorScheme(
     onSurface = OnSurfaceDark,
 )
 
-val LightColorScheme = lightColorScheme(
+private val LightColorScheme = lightColorScheme(
     primary = KomgaBlue,
     onPrimary = CardLight,
     primaryContainer = KomgaBlueLight,

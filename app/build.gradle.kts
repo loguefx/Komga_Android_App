@@ -86,7 +86,6 @@ dependencies {
     ksp(libs.hilt.work.compiler)
 
     implementation(libs.glance.appwidget)
-    implementation(libs.glance.material3)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
