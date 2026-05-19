@@ -158,6 +158,19 @@ class KomgaRepository @Inject constructor(
         }
     }
 
+    suspend fun getBooksInProgress(page: Int = 0, size: Int = 20): Result<List<Book>> {
+        return try {
+            val response = api.getBooksInProgress(page = page, size = size)
+            if (response.isSuccessful) {
+                Result.Success(response.body()!!.content.map { it.toDomain() })
+            } else {
+                Result.Error("Failed to load in-progress books: ${response.code()}", response.code())
+            }
+        } catch (e: Exception) {
+            Result.Error(e.message ?: "Failed to load in-progress books")
+        }
+    }
+
     suspend fun getBooksOnDeck(page: Int = 0, size: Int = 20): Result<List<Book>> {
         return try {
             val response = api.getBooksOnDeck(page, size)

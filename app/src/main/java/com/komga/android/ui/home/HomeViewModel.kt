@@ -7,6 +7,7 @@ import com.komga.android.data.repository.Result
 import com.komga.android.domain.model.Book
 import com.komga.android.domain.model.Series
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,7 +17,11 @@ import javax.inject.Inject
 
 data class HomeUiState(
     val isLoading: Boolean = false,
+    // Books actively being read (IN_PROGRESS) – mirrors Komga "Keep Reading"
+    val keepReadingBooks: List<Pair<Book, String>> = emptyList(),
+    // Next unread book in each series you've started – mirrors Komga "On Deck"
     val onDeckBooks: List<Pair<Book, String>> = emptyList(),
+    // Newest series added to Komga
     val newSeries: List<Pair<Series, String>> = emptyList(),
     val errorMessage: String? = null
 )
@@ -38,28 +43,43 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
-            // Load on-deck books and new series in parallel
-            val onDeckResult = repository.getBooksOnDeck(size = 20)
-            val newSeriesResult = repository.getLatestSeries(size = 20)
+            // Fetch all three sources in parallel
+            val inProgressDeferred = async { repository.getBooksInProgress(size = 20) }
+            val onDeckDeferred = async { repository.getBooksOnDeck(size = 20) }
+            val newSeriesDeferred = async { repository.getLatestSeries(size = 20) }
 
-            val onDeckBooks = when (onDeckResult) {
-                is Result.Success -> onDeckResult.data.map { book ->
-                    val url = repository.buildBookThumbnailUrl(book.id)
-                    Pair(book, url)
+            val inProgressResult = inProgressDeferred.await()
+            val onDeckResult = onDeckDeferred.await()
+            val newSeriesResult = newSeriesDeferred.await()
+
+            // Keep Reading: books currently in progress
+            val keepReading = when (inProgressResult) {
+                is Result.Success -> inProgressResult.data.map { book ->
+                    Pair(book, repository.buildBookThumbnailUrl(book.id))
                 }
+                is Result.Error -> emptyList()
+            }
+
+            // On Deck: next unread books, excluding anything already in Keep Reading
+            val keepReadingIds = keepReading.map { it.first.id }.toSet()
+            val onDeck = when (onDeckResult) {
+                is Result.Success -> onDeckResult.data
+                    .filter { it.id !in keepReadingIds }
+                    .map { book -> Pair(book, repository.buildBookThumbnailUrl(book.id)) }
                 is Result.Error -> emptyList()
             }
 
             val newSeries = when (newSeriesResult) {
                 is Result.Success -> newSeriesResult.data.map { series ->
-                    val url = repository.buildThumbnailUrl(series.id)
-                    Pair(series, url)
+                    Pair(series, repository.buildThumbnailUrl(series.id))
                 }
                 is Result.Error -> emptyList()
             }
 
             val error = when {
-                onDeckResult is Result.Error && newSeriesResult is Result.Error ->
+                inProgressResult is Result.Error &&
+                onDeckResult is Result.Error &&
+                newSeriesResult is Result.Error ->
                     "Failed to load content. Check your connection."
                 else -> null
             }
@@ -67,7 +87,8 @@ class HomeViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     isLoading = false,
-                    onDeckBooks = onDeckBooks,
+                    keepReadingBooks = keepReading,
+                    onDeckBooks = onDeck,
                     newSeries = newSeries,
                     errorMessage = error
                 )

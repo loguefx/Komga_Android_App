@@ -61,6 +61,15 @@ interface KomgaApiService {
         @Query("size") size: Int = 20
     ): Response<PagedBookDto>
 
+    // Books currently being read (IN_PROGRESS), sorted by most recently read
+    @GET("api/v1/books")
+    suspend fun getBooksInProgress(
+        @Query("read_status") readStatus: String = "IN_PROGRESS",
+        @Query("page") page: Int = 0,
+        @Query("size") size: Int = 20,
+        @Query("sort") sort: String = "readProgress.readDate,desc"
+    ): Response<PagedBookDto>
+
     @GET("api/v1/books/latest")
     suspend fun getLatestBooks(
         @Query("page") page: Int = 0,

@@ -20,12 +20,12 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.komga.android.ui.components.BookCard
 import com.komga.android.ui.components.ErrorMessage
@@ -42,7 +42,7 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // Refresh whenever the screen is resumed (e.g. after returning from the reader)
+    // Refresh whenever the screen is resumed (returns from reader, series detail, etc.)
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.loadHome()
     }
@@ -77,34 +77,37 @@ fun HomeScreen(
                 )
             }
 
-            if (uiState.isLoading && uiState.onDeckBooks.isEmpty() && uiState.newSeries.isEmpty()) {
-                item {
-                    LoadingIndicator()
-                }
+            val hasAnything = uiState.keepReadingBooks.isNotEmpty() ||
+                              uiState.onDeckBooks.isNotEmpty() ||
+                              uiState.newSeries.isNotEmpty()
+
+            if (uiState.isLoading && !hasAnything) {
+                item { LoadingIndicator() }
                 return@LazyColumn
             }
 
-            if (uiState.errorMessage != null && uiState.onDeckBooks.isEmpty() && uiState.newSeries.isEmpty()) {
-                item {
-                    ErrorMessage(message = uiState.errorMessage ?: "Something went wrong")
-                }
+            if (uiState.errorMessage != null && !hasAnything) {
+                item { ErrorMessage(message = uiState.errorMessage ?: "Something went wrong") }
                 return@LazyColumn
             }
 
-            // Continue Reading section
-            if (uiState.onDeckBooks.isNotEmpty()) {
-                item {
-                    SectionHeader(title = "Continue Reading")
-                }
+            // ── KEEP READING ─────────────────────────────────────────────
+            // Books currently in progress (same as Komga's "Keep Reading")
+            if (uiState.keepReadingBooks.isNotEmpty()) {
+                item { SectionHeader(title = "Keep Reading") }
                 item {
                     LazyRow(
                         contentPadding = PaddingValues(horizontal = 12.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(uiState.onDeckBooks, key = { it.first.id }) { (book, thumbnailUrl) ->
+                        items(uiState.keepReadingBooks, key = { it.first.id }) { (book, url) ->
                             BookCard(
-                                title = if (book.seriesTitle.isNotBlank()) "${book.seriesTitle} #${book.number.toInt()}" else book.name,
-                                thumbnailUrl = thumbnailUrl,
+                                title = if (book.seriesTitle.isNotBlank())
+                                    "${book.seriesTitle} #${book.number.let { n ->
+                                        if (n == n.toLong().toFloat()) n.toLong().toString() else n.toString()
+                                    }}"
+                                else book.name,
+                                thumbnailUrl = url,
                                 currentPage = book.currentPage,
                                 totalPages = book.pagesCount,
                                 onClick = { onBookClick(book.id) },
@@ -116,20 +119,46 @@ fun HomeScreen(
                 }
             }
 
-            // Recently Added section
-            if (uiState.newSeries.isNotEmpty()) {
-                item {
-                    SectionHeader(title = "Recently Added")
-                }
+            // ── ON DECK ───────────────────────────────────────────────────
+            // Next unread book in each series the user has started
+            if (uiState.onDeckBooks.isNotEmpty()) {
+                item { SectionHeader(title = "On Deck") }
                 item {
                     LazyRow(
                         contentPadding = PaddingValues(horizontal = 12.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(uiState.newSeries, key = { it.first.id }) { (series, thumbnailUrl) ->
+                        items(uiState.onDeckBooks, key = { it.first.id }) { (book, url) ->
+                            BookCard(
+                                title = if (book.seriesTitle.isNotBlank())
+                                    "${book.seriesTitle} #${book.number.let { n ->
+                                        if (n == n.toLong().toFloat()) n.toLong().toString() else n.toString()
+                                    }}"
+                                else book.name,
+                                thumbnailUrl = url,
+                                currentPage = book.currentPage,
+                                totalPages = book.pagesCount,
+                                onClick = { onBookClick(book.id) },
+                                modifier = Modifier.width(130.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+
+            // ── RECENTLY ADDED ────────────────────────────────────────────
+            if (uiState.newSeries.isNotEmpty()) {
+                item { SectionHeader(title = "Recently Added") }
+                item {
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(uiState.newSeries, key = { it.first.id }) { (series, url) ->
                             SeriesCard(
                                 series = series,
-                                thumbnailUrl = thumbnailUrl,
+                                thumbnailUrl = url,
                                 onClick = { onSeriesClick(series.id) },
                                 modifier = Modifier.width(130.dp)
                             )
@@ -139,9 +168,9 @@ fun HomeScreen(
                 }
             }
 
-            if (uiState.onDeckBooks.isEmpty() && uiState.newSeries.isEmpty() && !uiState.isLoading) {
+            if (!hasAnything && !uiState.isLoading) {
                 item {
-                    ErrorMessage(message = "No content found.\nStart reading some manga!")
+                    ErrorMessage(message = "No content yet.\nStart reading to see your progress here!")
                 }
             }
         }
