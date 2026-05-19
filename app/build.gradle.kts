@@ -81,6 +81,10 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.splashscreen)
 
+    implementation(libs.work.runtime.ktx)
+    implementation(libs.hilt.work)
+    ksp(libs.hilt.work.compiler)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

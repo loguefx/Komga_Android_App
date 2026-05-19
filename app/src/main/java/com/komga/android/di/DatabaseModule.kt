@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.komga.android.data.local.AppDatabase
 import com.komga.android.data.local.FavoriteDao
+import com.komga.android.data.local.NotificationStateDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -22,12 +23,18 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "komga_database"
-        ).fallbackToDestructiveMigration().build()
+        )
+            .addMigrations(AppDatabase.MIGRATION_1_2)
+            .fallbackToDestructiveMigration()
+            .build()
     }
 
     @Provides
     @Singleton
-    fun provideFavoriteDao(database: AppDatabase): FavoriteDao {
-        return database.favoriteDao()
-    }
+    fun provideFavoriteDao(database: AppDatabase): FavoriteDao = database.favoriteDao()
+
+    @Provides
+    @Singleton
+    fun provideNotificationStateDao(database: AppDatabase): NotificationStateDao =
+        database.notificationStateDao()
 }

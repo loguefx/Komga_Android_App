@@ -26,7 +26,15 @@ interface KomgaApiService {
     suspend fun getSeries(
         @Query("page") page: Int = 0,
         @Query("size") size: Int = 20,
-        @Query("sort") sort: String = "metadata.titleSort,asc"
+        @Query("sort") sort: String = "metadata.titleSort,asc",
+        @Query("search") search: String? = null
+    ): Response<PagedSeriesDto>
+
+    @GET("api/v1/series")
+    suspend fun searchSeries(
+        @Query("search") query: String,
+        @Query("page") page: Int = 0,
+        @Query("size") size: Int = 20
     ): Response<PagedSeriesDto>
 
     @GET("api/v1/series/latest")
@@ -57,6 +65,13 @@ interface KomgaApiService {
     // Books
     @GET("api/v1/books/ondeck")
     suspend fun getBooksOnDeck(
+        @Query("page") page: Int = 0,
+        @Query("size") size: Int = 20
+    ): Response<PagedBookDto>
+
+    @GET("api/v1/books")
+    suspend fun searchBooks(
+        @Query("search") query: String,
         @Query("page") page: Int = 0,
         @Query("size") size: Int = 20
     ): Response<PagedBookDto>

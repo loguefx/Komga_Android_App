@@ -105,6 +105,28 @@ class KomgaRepository @Inject constructor(
         }
     }
 
+    suspend fun searchSeries(query: String, size: Int = 20): Result<List<Series>> {
+        return try {
+            val response = api.searchSeries(query = query, size = size)
+            if (response.isSuccessful)
+                Result.Success(response.body()!!.content.map { it.toDomain() })
+            else Result.Error("Search failed: ${response.code()}", response.code())
+        } catch (e: Exception) {
+            Result.Error(e.message ?: "Search failed")
+        }
+    }
+
+    suspend fun searchBooks(query: String, size: Int = 20): Result<List<Book>> {
+        return try {
+            val response = api.searchBooks(query = query, size = size)
+            if (response.isSuccessful)
+                Result.Success(response.body()!!.content.map { it.toDomain() })
+            else Result.Error("Search failed: ${response.code()}", response.code())
+        } catch (e: Exception) {
+            Result.Error(e.message ?: "Search failed")
+        }
+    }
+
     suspend fun getLatestSeries(page: Int = 0, size: Int = 20): Result<List<Series>> {
         return try {
             val response = api.getLatestSeries(page, size)

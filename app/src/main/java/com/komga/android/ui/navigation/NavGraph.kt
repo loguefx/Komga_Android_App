@@ -6,10 +6,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.automirrored.outlined.LibraryBooks
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -33,6 +35,7 @@ import com.komga.android.ui.home.HomeScreen
 import com.komga.android.ui.library.LibraryScreen
 import com.komga.android.ui.login.LoginScreen
 import com.komga.android.ui.reader.ReaderScreen
+import com.komga.android.ui.search.SearchScreen
 import com.komga.android.ui.series.SeriesDetailScreen
 import com.komga.android.ui.settings.SettingsScreen
 
@@ -40,6 +43,7 @@ sealed class Screen(val route: String) {
     object Login : Screen("login")
     object Home : Screen("home")
     object Library : Screen("library")
+    object Search : Screen("search")
     object Favorites : Screen("favorites")
     object Settings : Screen("settings")
     object SeriesDetail : Screen("series/{seriesId}") {
@@ -60,6 +64,7 @@ data class BottomNavItem(
 val bottomNavItems = listOf(
     BottomNavItem("Home", Screen.Home.route, Icons.Filled.Home, Icons.Outlined.Home),
     BottomNavItem("Library", Screen.Library.route, Icons.AutoMirrored.Filled.LibraryBooks, Icons.AutoMirrored.Outlined.LibraryBooks),
+    BottomNavItem("Search", Screen.Search.route, Icons.Filled.Search, Icons.Outlined.Search),
     BottomNavItem("Favorites", Screen.Favorites.route, Icons.Filled.Favorite, Icons.Outlined.FavoriteBorder)
 )
 
@@ -161,6 +166,17 @@ fun KomgaNavGraph(
                 LibraryScreen(
                     onSeriesClick = { seriesId ->
                         navController.navigate(Screen.SeriesDetail.createRoute(seriesId))
+                    }
+                )
+            }
+
+            composable(Screen.Search.route) {
+                SearchScreen(
+                    onSeriesClick = { seriesId ->
+                        navController.navigate(Screen.SeriesDetail.createRoute(seriesId))
+                    },
+                    onBookClick = { bookId ->
+                        navController.navigate(Screen.Reader.createRoute(bookId))
                     }
                 )
             }
