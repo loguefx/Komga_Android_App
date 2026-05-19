@@ -5,7 +5,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import androidx.glance.appwidget.GlanceAppWidgetManager
-import androidx.glance.appwidget.state.updateAppWidgetState
 import com.komga.android.widget.KomgaWidget
 import com.komga.android.widget.WIDGET_KEY_BOOKS
 import com.komga.android.widget.WIDGET_PREFS

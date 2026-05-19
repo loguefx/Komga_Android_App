@@ -63,8 +63,8 @@ class MainActivity : ComponentActivity() {
         scheduleChapterCheckWorker()
 
         setContent {
-            val themeMode by preferencesDataStore.getThemeMode()
-                .collectAsStateWithLifecycle(initialValue = ThemeMode.SYSTEM)
+            val themeMode = preferencesDataStore.getThemeMode()
+                .collectAsStateWithLifecycle(initialValue = ThemeMode.SYSTEM).value
             KomgaTheme(themeMode = themeMode) {
                 KomgaNavGraph(startDestination = startDestination)
             }

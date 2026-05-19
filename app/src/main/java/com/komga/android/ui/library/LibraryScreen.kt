@@ -235,7 +235,7 @@ private fun SeriesTab(
                                     .fillMaxSize()
                                     .background(bgColor, RoundedCornerShape(8.dp))
                                     .padding(horizontal = 12.dp),
-                                contentAlignment = if (dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd)
+                                contentAlignment = if (dismissState.targetValue == SwipeToDismissBoxValue.StartToEnd)
                                     Alignment.CenterStart else Alignment.CenterEnd
                             ) {
                                 Icon(
