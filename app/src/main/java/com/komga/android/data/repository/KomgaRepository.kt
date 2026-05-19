@@ -197,6 +197,16 @@ class KomgaRepository @Inject constructor(
         }
     }
 
+    suspend fun markSeriesRead(seriesId: String): Result<Unit> {
+        return try {
+            val response = api.markSeriesRead(seriesId)
+            if (response.isSuccessful) Result.Success(Unit)
+            else Result.Error("Failed to mark as read: ${response.code()}", response.code())
+        } catch (e: Exception) {
+            Result.Error(e.message ?: "Unknown error")
+        }
+    }
+
     suspend fun updateReadProgress(bookId: String, page: Int, completed: Boolean): Result<Unit> {
         return try {
             val response = api.updateReadProgress(bookId, ReadProgressUpdateDto(page, completed))

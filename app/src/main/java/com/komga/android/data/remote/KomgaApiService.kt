@@ -11,6 +11,7 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.DELETE
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -81,5 +82,11 @@ interface KomgaApiService {
     @DELETE("api/v1/books/{bookId}/read-progress")
     suspend fun deleteReadProgress(
         @Path("bookId") bookId: String
+    ): Response<Unit>
+
+    // Mark entire series as read via Tachiyomi-compatible endpoint
+    @PUT("api/v2/series/{seriesId}/read-progress/tachiyomi")
+    suspend fun markSeriesRead(
+        @Path("seriesId") seriesId: String
     ): Response<Unit>
 }

@@ -21,7 +21,8 @@ data class SeriesDetailUiState(
     val books: List<Pair<Book, String>> = emptyList(),
     val thumbnailUrl: String = "",
     val isFavorite: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val isMarkingRead: Boolean = false
 )
 
 @HiltViewModel
@@ -94,6 +95,16 @@ class SeriesDetailViewModel @Inject constructor(
             } else {
                 repository.addFavorite(series)
             }
+        }
+    }
+
+    fun markSeriesAsRead() {
+        val seriesId = _uiState.value.series?.id ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isMarkingRead = true) }
+            repository.markSeriesRead(seriesId)
+            // Reload to reflect updated read counts
+            loadSeriesDetail()
         }
     }
 }

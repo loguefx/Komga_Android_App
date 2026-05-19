@@ -12,23 +12,38 @@ import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -45,7 +60,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -65,19 +82,29 @@ fun ReaderScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
+    // Keep display awake while reading
+    val view = LocalView.current
+    DisposableEffect(Unit) {
+        view.keepScreenOn = true
+        onDispose { view.keepScreenOn = false }
+    }
+
     when {
         uiState.isLoading -> {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black)
+                    .background(Color.Black),
+                contentAlignment = Alignment.Center
             ) {
                 LoadingIndicator()
             }
         }
+
         uiState.errorMessage != null -> {
             ErrorMessage(message = uiState.errorMessage ?: "Error loading book")
         }
+
         uiState.pageUrls.isNotEmpty() -> {
             val scope = rememberCoroutineScope()
             val pageCount = uiState.pageUrls.size
@@ -85,6 +112,13 @@ fun ReaderScreen(
                 initialPage = uiState.currentPage,
                 pageCount = { pageCount }
             )
+
+            // Sync pager position when chapter changes (in-place navigation)
+            LaunchedEffect(uiState.currentPage, uiState.book?.id) {
+                if (pagerState.currentPage != uiState.currentPage) {
+                    pagerState.scrollToPage(uiState.currentPage)
+                }
+            }
 
             LaunchedEffect(pagerState) {
                 snapshotFlow { pagerState.currentPage }.collect { page ->
@@ -97,9 +131,10 @@ fun ReaderScreen(
                     .fillMaxSize()
                     .background(Color.Black)
             ) {
-                // Main pager
+                // Main pager - reverseLayout for RTL manga mode
                 HorizontalPager(
                     state = pagerState,
+                    reverseLayout = uiState.isRtl,
                     modifier = Modifier.fillMaxSize()
                 ) { pageIndex ->
                     ZoomablePage(
@@ -108,50 +143,62 @@ fun ReaderScreen(
                     )
                 }
 
-                // LEFT tap zone – previous page (entire left 38% of screen)
+                // LEFT tap zone
+                // In LTR: left = previous page
+                // In RTL: left = next page (reading direction)
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .fillMaxWidth(0.38f)
+                        .fillMaxWidth(0.35f)
                         .align(Alignment.CenterStart)
-                        .pointerInput(pagerState) {
+                        .pointerInput(pagerState, uiState.isRtl) {
                             detectTapGestures {
-                                val prev = pagerState.currentPage - 1
-                                if (prev >= 0) {
-                                    scope.launch { pagerState.animateScrollToPage(prev) }
+                                val target = if (uiState.isRtl) {
+                                    pagerState.currentPage + 1
+                                } else {
+                                    pagerState.currentPage - 1
+                                }
+                                if (target in 0 until pageCount) {
+                                    scope.launch { pagerState.animateScrollToPage(target) }
                                 }
                             }
                         }
                 )
 
-                // RIGHT tap zone – next page (entire right 38% of screen)
+                // RIGHT tap zone
+                // In LTR: right = next page
+                // In RTL: right = previous page
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .fillMaxWidth(0.38f)
+                        .fillMaxWidth(0.35f)
                         .align(Alignment.CenterEnd)
-                        .pointerInput(pagerState) {
+                        .pointerInput(pagerState, uiState.isRtl) {
                             detectTapGestures {
-                                val next = pagerState.currentPage + 1
-                                if (next < pageCount) {
-                                    scope.launch { pagerState.animateScrollToPage(next) }
+                                val target = if (uiState.isRtl) {
+                                    pagerState.currentPage - 1
+                                } else {
+                                    pagerState.currentPage + 1
+                                }
+                                if (target in 0 until pageCount) {
+                                    scope.launch { pagerState.animateScrollToPage(target) }
                                 }
                             }
                         }
                 )
 
-                // CENTER tap zone – toggle controls (middle 24%)
+                // CENTER tap zone – toggle controls
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .fillMaxWidth(0.24f)
+                        .fillMaxWidth(0.3f)
                         .align(Alignment.Center)
                         .pointerInput(Unit) {
                             detectTapGestures { viewModel.toggleControls() }
                         }
                 )
 
-                // Top bar – shown/hidden with controls
+                // ── TOP BAR (shown/hidden) ─────────────────────────────────
                 AnimatedVisibility(
                     visible = uiState.showControls,
                     enter = fadeIn() + slideInVertically(),
@@ -170,7 +217,7 @@ fun ReaderScreen(
                                     color = Color.White
                                 )
                                 Text(
-                                    text = "${uiState.currentPage + 1} / ${uiState.pageUrls.size}",
+                                    text = "${uiState.currentPage + 1} / $pageCount",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = Color.White.copy(alpha = 0.7f)
                                 )
@@ -185,33 +232,176 @@ fun ReaderScreen(
                                 )
                             }
                         },
+                        actions = {
+                            // Previous chapter (if available)
+                            if (uiState.prevBookId != null) {
+                                IconButton(onClick = { viewModel.goToPrevChapter() }) {
+                                    Icon(
+                                        Icons.Default.SkipPrevious,
+                                        contentDescription = "Previous chapter",
+                                        tint = Color.White
+                                    )
+                                }
+                            }
+                            // Next chapter (if available)
+                            if (uiState.nextBookId != null) {
+                                IconButton(onClick = { viewModel.goToNextChapter() }) {
+                                    Icon(
+                                        Icons.Default.SkipNext,
+                                        contentDescription = "Next chapter",
+                                        tint = Color.White
+                                    )
+                                }
+                            }
+                            // RTL / LTR reading direction toggle
+                            IconButton(onClick = { viewModel.toggleRtl() }) {
+                                Icon(
+                                    Icons.Default.SwapHoriz,
+                                    contentDescription = if (uiState.isRtl) "Switch to LTR" else "Switch to RTL",
+                                    tint = if (uiState.isRtl) MaterialTheme.colorScheme.primary else Color.White
+                                )
+                            }
+                        },
                         colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = Color.Black.copy(alpha = 0.7f)
+                            containerColor = Color.Black.copy(alpha = 0.75f)
                         )
                     )
                 }
 
-                // Bottom progress bar – always visible
+                // ── BOTTOM BAR (always visible) ────────────────────────────
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .align(Alignment.BottomCenter)
-                        .background(Color.Black.copy(alpha = 0.55f))
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    LinearProgressIndicator(
-                        progress = {
-                            if (pageCount > 0) (uiState.currentPage + 1f) / pageCount else 0f
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = Color.White.copy(alpha = 0.3f)
+                    // Chapter complete overlay
+                    AnimatedVisibility(
+                        visible = uiState.isChapterComplete,
+                        enter = fadeIn() + slideInVertically { it },
+                        exit = fadeOut() + slideOutVertically { it }
+                    ) {
+                        ChapterCompleteBar(
+                            hasNext = uiState.nextBookId != null,
+                            hasPrev = uiState.prevBookId != null,
+                            onNext = { viewModel.goToNextChapter() },
+                            onPrev = { viewModel.goToPrevChapter() },
+                            onBack = onBack
+                        )
+                    }
+
+                    // Progress bar + page counter
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color.Black.copy(alpha = 0.55f))
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        LinearProgressIndicator(
+                            progress = {
+                                if (pageCount > 0) (uiState.currentPage + 1f) / pageCount else 0f
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = Color.White.copy(alpha = 0.3f)
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "${uiState.currentPage + 1} of $pageCount pages",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White.copy(alpha = 0.85f)
+                            )
+                            if (uiState.isRtl) {
+                                Text(
+                                    text = "RTL",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChapterCompleteBar(
+    hasNext: Boolean,
+    hasPrev: Boolean,
+    onNext: () -> Unit,
+    onPrev: () -> Unit,
+    onBack: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xCC000000))
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                Icons.Default.CheckCircle,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                text = "Chapter complete!",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (hasPrev) {
+                OutlinedButton(
+                    onClick = onPrev,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(Icons.Default.SkipPrevious, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Prev chapter", style = MaterialTheme.typography.labelMedium, color = Color.White)
+                }
+            }
+
+            if (hasNext) {
+                Button(
+                    onClick = onNext,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
                     )
+                ) {
+                    Text("Next chapter", style = MaterialTheme.typography.labelMedium)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
+                }
+            } else {
+                Button(
+                    onClick = onBack,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
                     Text(
-                        text = "${uiState.currentPage + 1} of $pageCount pages",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.85f)
+                        "Back to series",
+                        style = MaterialTheme.typography.labelMedium,
+                        textAlign = TextAlign.Center
                     )
                 }
             }
